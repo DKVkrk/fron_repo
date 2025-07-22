@@ -1,0 +1,302 @@
+.ride-request-container {
+  display: flex;
+  height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.ride-request-form {
+  flex: 1;
+  padding: 20px;
+  max-width: 400px;
+  background: #f8f9fa;
+  overflow-y: auto;
+}
+
+.ride-request-map {
+  flex: 2;
+  height: 100%;
+}
+
+.map-container {
+  height: 100%;
+  width: 100%;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #4a90e2;
+}
+
+.suggestions-list {
+  position: absolute;
+  width: calc(100% - 24px);
+  max-height: 200px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  z-index: 1000;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.suggestion-item {
+  padding: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+.suggestion-item:hover {
+  background-color: #f5f5f5;
+}
+
+.vehicle-selection {
+  margin: 25px 0;
+}
+
+.vehicle-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.vehicle-option {
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: white;
+}
+
+.vehicle-option.selected {
+  border-color: #4a90e2;
+  background-color: #f0f7ff;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.vehicle-option:hover {
+  border-color: #4a90e2;
+}
+
+.vehicle-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 10px;
+}
+
+.vehicle-info h4 {
+  margin: 0 0 5px 0;
+  font-size: 16px;
+}
+
+.vehicle-info p {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.fare {
+  font-weight: bold;
+  color: #2ecc71;
+  margin-top: 5px;
+}
+
+.request-button {
+  width: 100%;
+  padding: 14px;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.request-button:hover {
+  background-color: #3a7bc8;
+}
+
+.request-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.ride-status {
+  padding: 20px;
+  text-align: center;
+}
+
+.loading-spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top: 4px solid #4a90e2;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.cancel-button {
+  width: 100%;
+  padding: 14px;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  margin-top: 20px;
+}
+
+.cancel-button:hover {
+  background-color: #c0392b;
+}
+
+.driver-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 20px 0;
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.driver-info img {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+}
+
+.driver-info h4 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.driver-info p {
+  margin: 5px 0 0 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.map-container-mini {
+  height: 200px;
+  margin: 20px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+.mini-map {
+  height: 100%;
+  width: 100%;
+}
+
+.eta {
+  font-size: 18px;
+  font-weight: 600;
+  color: #4a90e2;
+  margin: 10px 0;
+}
+
+.rider-icon {
+  filter: hue-rotate(120deg);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.3s;
+}
+
+.accept-btn {
+  background-color: #2ecc71;
+  color: white;
+}
+
+.accept-btn:hover {
+  background-color: #27ae60;
+}
+
+.reject-btn {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.reject-btn:hover {
+  background-color: #c0392b;
+}
+
+.complete-btn {
+  background-color: #3498db;
+  color: white;
+}
+
+.complete-btn:hover {
+  background-color: #2980b9;
+}
+
+.no-rides {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.no-rides .material-symbols-outlined {
+  font-size: 50px;
+  margin-bottom: 15px;
+  color: #ccc;
+}
+
+.no-rides p {
+  font-size: 18px;
+  margin: 0;
+}

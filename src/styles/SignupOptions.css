@@ -1,0 +1,108 @@
+/* src/styles/SignupOptions.css */
+
+/* Note: The 'body' styles here apply globally if imported directly in App.jsx or main.jsx.
+   If you want these body styles *only* for this page, you might need a more advanced
+   CSS-in-JS solution or ensure main.jsx has a base body style and this one overrides.
+   For now, I'm keeping them as they were in your original HTML. */
+body {
+  margin: 0;
+  font-family: 'Montserrat', sans-serif;
+  background: linear-gradient(120deg, #1e3c72, #2a5298);
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.signup-options-page {
+  /* Added a wrapper class to ensure proper centering and styling within React */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh; /* Takes full viewport height */
+  width: 100%; /* Takes full viewport width */
+}
+
+.container {
+  background: white;
+  border-radius: 20px;
+  padding: 50px;
+  max-width: 800px;
+  width: 90%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  display: flex;
+  gap: 30px;
+  animation: slideUp 1s ease;
+  box-sizing: border-box; /* Ensures padding is included in the element's total width/height */
+}
+
+.option-box {
+  flex: 1;
+  background: #f9f9f9;
+  border-radius: 15px;
+  padding: 30px;
+  text-align: center;
+  transition: transform 0.3s ease, background 0.3s ease;
+  cursor: pointer;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+}
+
+.option-box:hover {
+  transform: scale(1.05);
+  background: #eef6ff;
+}
+
+.icon {
+  font-size: 60px;
+  margin-bottom: 15px;
+  color: #2a5298;
+}
+
+h3 {
+  margin-bottom: 10px;
+  font-size: 22px;
+  color: #1e3c72;
+}
+
+p {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 20px;
+}
+
+.btn {
+  background: #1e3c72;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: uppercase;
+  transition: background 0.3s ease;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: #16305d;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .container {
+    flex-direction: column;
+    padding: 30px 20px;
+  }
+}

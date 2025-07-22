@@ -1,0 +1,361 @@
+.driver-container {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+.driver-header {
+  margin-bottom: 30px;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.app-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #333;
+  margin: 0;
+}
+
+.profile {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.profile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.status-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.status-indicator.online {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-indicator.offline {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-indicator.online .status-dot {
+  background-color: #2e7d32;
+}
+
+.status-indicator.offline .status-dot {
+  background-color: #c62828;
+}
+
+.status-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.status-toggle-btn.online {
+  background-color: #2e7d32;
+  color: white;
+}
+
+.status-toggle-btn.offline {
+  background-color: #c62828;
+  color: white;
+}
+
+.status-toggle-btn:disabled {
+  background-color: #bdbdbd;
+  cursor: not-allowed;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  color: #666;
+}
+
+.connection-status .status-dot.connected {
+  background-color: #2e7d32;
+}
+
+.connection-status .status-dot.disconnected {
+  background-color: #c62828;
+}
+
+.connection-status .status-dot.error {
+  background-color: #fbc02d;
+}
+
+.location-info {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 10px;
+  background-color: white;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.location-icon {
+  color: #4a90e2;
+}
+
+.location-text {
+  font-family: monospace;
+}
+
+.location-error {
+  color: #e53935;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.location-loading {
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 20px;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 16px;
+  font-weight: 600;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.tab-btn.active {
+  color: #4a90e2;
+  border-bottom-color: #4a90e2;
+}
+
+.rides-container {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.loading-spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top: 4px solid #4a90e2;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.rides-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ride-card {
+  padding: 15px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  transition: all 0.3s;
+}
+
+.ride-card:hover {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.ride-info h3 {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #333;
+}
+
+.ride-details {
+  margin-bottom: 15px;
+}
+
+.location-details {
+  margin-bottom: 10px;
+}
+
+.location-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.address-container {
+  flex: 1;
+}
+
+.detail-label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+.detail-value {
+  font-size: 14px;
+  color: #666;
+}
+
+.ride-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.meta-item {
+  font-size: 14px;
+}
+
+.time-display {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #666;
+}
+
+.fare-display {
+  color: #2ecc71;
+  font-weight: 600;
+}
+
+.no-rides {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.no-rides .material-symbols-outlined {
+  font-size: 50px;
+  margin-bottom: 15px;
+  color: #ccc;
+}
+
+.no-rides p {
+  font-size: 18px;
+  margin: 0;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.3s;
+}
+
+.accept-btn {
+  background-color: #2ecc71;
+  color: white;
+}
+
+.accept-btn:hover {
+  background-color: #27ae60;
+}
+
+.reject-btn {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.reject-btn:hover {
+  background-color: #c0392b;
+}
+
+.complete-btn {
+  background-color: #3498db;
+  color: white;
+}
+
+.complete-btn:hover {
+  background-color: #2980b9;
+}

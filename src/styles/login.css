@@ -1,0 +1,175 @@
+/* src/styles/Login.css */
+
+/* Basic reset/base styles (optional, but good if not in main styles.css) */
+body {
+    margin: 0;
+    font-family: 'Ubuntu', sans-serif;
+    background-color: #f8f8f8; /* Light background for the page */
+    color: #333;
+}
+
+/* Page Container - Centering and overall layout */
+.login-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh; /* Full viewport height */
+    padding: 1.5rem; /* Padding around the content on small screens */
+    box-sizing: border-box; /* Include padding in element's total width/height */
+}
+
+/* Login Container - The card/box for the form */
+.login-container {
+    background-color: #fff;
+    padding: 2.5rem 2rem; /* Adjusted padding: top/bottom 2.5rem, left/right 2rem */
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* Softer, larger shadow */
+    width: 100%;
+    max-width: 450px; /* Max width for the login form */
+    text-align: center; /* Center text within the container */
+    box-sizing: border-box;
+}
+
+.login-title {
+    font-size: 2.2rem; /* Larger, more prominent title */
+    margin-bottom: 2rem; /* More space below title */
+    color: #000; /* Darker title */
+    font-weight: 700; /* Bolder */
+}
+
+/* Form Styling */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem; /* Space between form groups */
+}
+
+.form-group {
+    text-align: left; /* Align labels and inputs to the left */
+}
+
+.form-group label {
+    display: block; /* Make label take full width */
+    margin-bottom: 0.5rem; /* Space between label and input */
+    font-size: 0.95rem; /* Slightly larger label text */
+    color: #555;
+    font-weight: 500;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.8rem 1rem; /* Generous padding */
+    font-size: 1rem; /* Standard readable text size */
+    border: 1px solid #ddd; /* Lighter border */
+    border-radius: 6px;
+    box-sizing: border-box; /* Crucial for width: 100% with padding */
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none; /* Remove default outline */
+    border-color: #007bff; /* Uber-like blue on focus */
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25); /* Subtle glow on focus */
+}
+
+.form-input::placeholder {
+    color: #aaa;
+}
+
+/* Form Options (Forgot password) */
+.form-options {
+    text-align: right; /* Align link to the right */
+    margin-top: -0.5rem; /* Pull up closer to the input field above */
+    margin-bottom: 0.5rem;
+}
+
+.forgot-password-link {
+    color: #007bff; /* Uber-like blue */
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+}
+
+.forgot-password-link:hover {
+    color: #0056b3; /* Darker blue on hover */
+    text-decoration: underline;
+}
+
+/* Login Button */
+.login-button {
+    width: 100%;
+    padding: 1rem 1.5rem; /* Good padding for a button */
+    font-size: 1.1rem; /* Larger text for the button */
+    font-weight: 600;
+    color: #fff;
+    background-color: #000; /* Uber's primary button color */
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+    margin-top: 1rem; /* Space above button */
+}
+
+.login-button:hover {
+    background-color: #333; /* Slightly lighter on hover */
+    transform: translateY(-1px); /* Subtle lift effect */
+}
+
+.login-button:active {
+    background-color: #555; /* Even lighter on click */
+    transform: translateY(0);
+}
+
+/* Signup Link Section */
+.signup-link-container {
+    margin-top: 2rem; /* Space above the signup link */
+    padding-top: 1.5rem; /* Padding for the top of the container */
+    border-top: 1px solid #eee; /* A subtle line separating it from the form */
+    font-size: 0.95rem;
+    color: #666;
+}
+
+.signup-link {
+    color: #007bff; /* Uber-like blue */
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.signup-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 600px) {
+    .login-container {
+        padding: 1.5rem; /* Less padding on very small screens */
+    }
+
+    .login-title {
+        font-size: 1.8rem; /* Slightly smaller title on small screens */
+        margin-bottom: 1.5rem;
+    }
+
+    .form-input,
+    .login-button {
+        font-size: 0.95rem; /* Slightly smaller text for inputs and buttons */
+        padding: 0.7rem 1rem;
+    }
+
+    .signup-link-container {
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .login-page {
+        padding: 1rem; /* Minimal padding on tiny screens */
+    }
+    .login-container {
+        border-radius: 0; /* No rounded corners on very small screens (full width effect) */
+        box-shadow: none; /* No shadow on very small screens */
+    }
+}

@@ -1,0 +1,436 @@
+/* Chatbot container */
+.chatbot-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  font-family: 'Segoe UI', Roboto, -apple-system, sans-serif;
+}
+
+/* Rilo Brand Colors */
+:root {
+  --rilo-primary: #3366ff;
+  --rilo-primary-dark: #254eda;
+  --rilo-primary-light: #e6ecff;
+  --rilo-accent: #00c853;
+  --rilo-text: #2d3748;
+  --rilo-text-light: #718096;
+  --rilo-bg: #f7fafc;
+  --rilo-white: #ffffff;
+  --rilo-error: #ff4444;
+  --rilo-warning: #ffbb33;
+}
+
+/* Toggle button with Rilo branding */
+.chatbot-toggle {
+  background-color: var(--rilo-primary);
+  color: var(--rilo-white);
+  border: none;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(51, 102, 255, 0.3);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.chatbot-toggle:hover {
+  background-color: var(--rilo-primary-dark);
+  transform: scale(1.1);
+}
+
+/* Pulse animation dot */
+.pulse-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 12px;
+  height: 12px;
+  background-color: var(--rilo-accent);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+  100% { transform: scale(0.95); opacity: 1; }
+}
+
+/* Chat window */
+.chatbot-window {
+  width: 350px;
+  height: 500px;
+  background-color: var(--rilo-white);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Header */
+.chatbot-header {
+  background-color: var(--rilo-primary);
+  color: var(--rilo-white);
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chatbot-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--rilo-white);
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.close-btn:hover {
+  opacity: 1;
+}
+
+/* Messages area */
+.chatbot-messages {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: var(--rilo-bg);
+}
+
+.message {
+  max-width: 80%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  line-height: 1.4;
+  word-wrap: break-word;
+  font-size: 14px;
+  animation: fadeIn 0.3s ease;
+}
+
+.message.user {
+  background-color: var(--rilo-primary);
+  color: var(--rilo-white);
+  align-self: flex-end;
+  border-bottom-right-radius: 5px;
+}
+
+.message.bot {
+  background-color: var(--rilo-white);
+  color: var(--rilo-text);
+  align-self: flex-start;
+  border-bottom-left-radius: 5px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* Special ride message styling */
+.message.ride-option {
+  border-left: 4px solid var(--rilo-primary);
+  background-color: var(--rilo-white);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.message.ride-option:hover {
+  background-color: var(--rilo-primary-light);
+  transform: translateX(3px);
+}
+
+.ride-details {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--rilo-text-light);
+}
+
+.ride-price {
+  font-weight: 600;
+  color: var(--rilo-primary);
+}
+
+.ride-type {
+  font-weight: 600;
+  color: var(--rilo-text);
+}
+
+.ride-eta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display: flex;
+  padding: 10px 15px;
+  align-self: flex-start;
+  background-color: var(--rilo-white);
+  border-radius: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  width: fit-content;
+  gap: 5px;
+}
+
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--rilo-text-light);
+  border-radius: 50%;
+  animation: typingAnimation 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingAnimation {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-5px); }
+}
+
+/* Input area */
+.chatbot-input {
+  display: flex;
+  padding: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  background-color: var(--rilo-white);
+}
+
+.chatbot-input.disabled {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.chatbot-input input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 24px;
+  outline: none;
+  font-size: 14px;
+  transition: all 0.3s;
+  background-color: var(--rilo-bg);
+}
+
+.chatbot-input input:focus {
+  border-color: var(--rilo-primary);
+  box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+}
+
+.chatbot-input button {
+  background-color: var(--rilo-primary);
+  color: var(--rilo-white);
+  border: none;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  margin-left: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.chatbot-input button:hover:not(:disabled) {
+  background-color: var(--rilo-primary-dark);
+  transform: scale(1.05);
+}
+
+.chatbot-input button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Quick action buttons */
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 15px 15px;
+}
+
+.quick-action-btn {
+  background-color: var(--rilo-primary-light);
+  color: var(--rilo-primary);
+  border: none;
+  border-radius: 16px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quick-action-btn:hover {
+  background-color: var(--rilo-primary);
+  color: var(--rilo-white);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 480px) {
+  .chatbot-container {
+    bottom: 10px;
+    right: 10px;
+  }
+  
+  .chatbot-window {
+    width: calc(100vw - 20px);
+    height: 70vh;
+    max-height: 500px;
+    border-radius: 12px 12px 0 0;
+  }
+  
+  .chatbot-toggle {
+    width: 50px;
+    height: 50px;
+  }
+}
+
+/* Error states */
+.error-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: var(--rilo-error);
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.error-message {
+  background: #ffebee;
+  color: var(--rilo-error);
+  padding: 10px 15px;
+  font-size: 14px;
+  border-radius: 8px;
+  margin: 8px 15px;
+}
+
+.error-text {
+  color: var(--rilo-error);
+  font-size: 14px;
+  margin-left: 10px;
+  font-weight: normal;
+}
+
+/* Ride booking confirmation */
+.booking-confirmation {
+  background-color: var(--rilo-primary-light);
+  border-left: 4px solid var(--rilo-accent);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.confirmation-title {
+  font-weight: 600;
+  color: var(--rilo-primary-dark);
+  margin-bottom: 6px;
+}
+
+.confirmation-detail {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.confirmation-label {
+  color: var(--rilo-text-light);
+}
+
+.confirmation-value {
+  font-weight: 500;
+  color: var(--rilo-text);
+}
+
+/* Driver assigned state */
+.driver-assigned {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background-color: var(--rilo-white);
+  border-radius: 8px;
+  margin-top: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.driver-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--rilo-primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rilo-primary);
+  font-weight: bold;
+}
+
+.driver-info {
+  flex: 1;
+}
+
+.driver-name {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.driver-car {
+  font-size: 12px;
+  color: var(--rilo-text-light);
+}
+
+.driver-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--rilo-warning);
+}

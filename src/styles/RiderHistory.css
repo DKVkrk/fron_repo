@@ -1,0 +1,59 @@
+/* RiderHistory.css */
+.rider-history-container {
+  max-width: 800px;
+  margin: 40px auto;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  padding: 32px 24px 24px 24px;
+}
+
+.rider-history-container h2 {
+  text-align: center;
+  margin-bottom: 24px;
+  color: #2193b0;
+}
+
+.ride-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 24px;
+}
+
+.ride-history-table th, .ride-history-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: left;
+}
+
+.ride-history-table th {
+  background: #f7fafc;
+  color: #0f172a;
+}
+
+.ride-history-table tr:hover {
+  background: #f0f8ff;
+}
+
+.error {
+  color: #d32f2f;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.back-btn {
+  display: block;
+  margin: 0 auto;
+  padding: 8px 24px;
+  background: #2193b0;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.back-btn:hover {
+  background: #176d8a;
+}
