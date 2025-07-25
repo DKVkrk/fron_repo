@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/styles.css";
+import Chatbot from "./chatbot";
 
 function Home() {
   const navigate = useNavigate();
@@ -251,6 +252,9 @@ function Home() {
           <p>© 2023 Uber Technologies Inc. | Cloned by Abhinav Singh</p>
         </div>
       </footer>
+
+      {/* Chatbot Component */}
+      <Chatbot />
     </div>
   );
 }

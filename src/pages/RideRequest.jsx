@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from "react-leaflet";
-import L from "leaflet";
+import L from "leaflet"; // This line is crucial!
 import "leaflet/dist/leaflet.css";
 import axios from "../utils/axios";
-import { toast } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 import io from "socket.io-client";
 import { baseURL } from "../common/SummaryApi";
 import "../styles/RideRequest.css";
-
 // Fix for default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -47,9 +47,9 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -76,10 +76,12 @@ const RideRequest = () => {
 
   // Add OTP and ride progress state
   const [rideOtp, setRideOtp] = useState(null);
-  const [otpInput, setOtpInput] = useState("");
   const [otpVerified, setOtpVerified] = useState(false);
-  const [showOtpInput, setShowOtpInput] = useState(false);
-  const [showRoute, setShowRoute] = useState(false);
+  const [driverReached, setDriverReached] = useState(false); // New state for driver reached
+
+  // New state for image sharing
+  const [receivedImages, setReceivedImages] = useState({}); // Stores images received for each rideId
+  const [selectedImageFile, setSelectedImageFile] = useState(null); // Stores the file selected by input
 
   const vehicleOptions = [
     {
@@ -144,15 +146,21 @@ const RideRequest = () => {
       setRideOtp(otp);
       toast.info(`Your ride OTP: ${otp}`);
     });
-    socket.on('otpVerified', ({ success }) => {
-      if (success) {
-        setOtpVerified(true);
-        setShowRoute(true);
-        toast.success('OTP verified successfully!');
+
+    socket.on('otpVerificationResponse', ({ rideId, success, message }) => {
+      if (rideId === currentRideId) {
+        if (success) {
+          setOtpVerified(true);
+          toast.success(message || 'OTP verified successfully! Your ride has started.');
+          setRideStatus("ongoing"); // Change status to ongoing after OTP verification
+        } else {
+          setOtpVerified(false);
+          toast.error(message || 'Wrong OTP! Please try again.');
+        }
       }
     });
 
-    socket.on('rideAccepted', async (data) => {
+    socket.on('rideAccepted', (data) => {
       setRideStatus("accepted");
       setDriverDetails({
         driverId: data.driverId || "",
@@ -160,26 +168,9 @@ const RideRequest = () => {
         vehicleType: data.vehicleType || "Standard Car",
         driverProfilePhoto: data.driverProfilePhoto || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
       });
-      startTrackingDriver(data.driverId);
-      // Always fetch the latest ride details to get OTP
-      try {
-        if (currentRideId) {
-          const res = await axios.get(`/api/user/ride/${currentRideId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          console.log("Ride details response:", res.data); // Debug log
-          if (res.data && res.data.data && res.data.data.otp) {
-            setRideOtp(res.data.data.otp);
-          }
-        }
-      } catch (err) {
-        // fallback: keep previous OTP if any
-      }
-    });
-
-    socket.on('rideRejected', (data) => {
-      setRideStatus("requested");
-      toast.info(data.message);
+      // OTP is now provided in the initial ride request response, so no need to fetch here
+      console.log("Ride Accepted Data:", data);
+      toast.success("Your ride has been accepted! Driver is on the way.");
     });
 
     socket.on('driverLocationUpdate', (location) => {
@@ -187,16 +178,62 @@ const RideRequest = () => {
       updateEta(location);
     });
 
-    socket.on('rideCompleted', (data) => {
-      setRideStatus("completed");
-      toast.success("Ride completed successfully!");
-      if (locationIntervalRef.current) {
-        clearInterval(locationIntervalRef.current);
+    socket.on('driverReachedRider', ({ riderId, rideId }) => {
+      if (riderId === userId && rideId === currentRideId) {
+        setDriverReached(true);
+        toast.info("Your driver has arrived!");
       }
-      setTimeout(() => {
-        resetRide();
-      }, 3000);
     });
+
+    socket.on('rideRejected', (data) => {
+      setRideStatus("not_requested"); // Go back to not_requested for re-request
+      setCurrentRideId(null);
+      setDriverLocation(null);
+      setDriverDetails(null);
+      toast.info(data.message || "Driver rejected your ride. Please request again.");
+    });
+
+    socket.on('rideCompleted', (data) => {
+      if (data.userId === userId && data.rideId === currentRideId) {
+        setRideStatus("completed");
+        toast.success("Ride completed successfully!");
+        if (locationIntervalRef.current) {
+          clearInterval(locationIntervalRef.current);
+        }
+        setTimeout(() => {
+          resetRide();
+        }, 3000);
+      }
+    });
+
+    socket.on('rideCancelled', ({ rideId }) => {
+      if (rideId === currentRideId) {
+        toast.info("Your ride was cancelled.");
+        resetRide();
+      }
+    });
+
+    // NEW: Listen for incoming image messages
+    socket.on('imageMessage', ({ rideId, imageUrl, senderId, senderRole }) => {
+      if (rideId === currentRideId) {
+        console.log(`Received image for ride ${rideId} from ${senderRole}: ${imageUrl}`);
+        setReceivedImages(prev => {
+          const currentImages = prev[rideId] || [];
+          // Only add if not already present (to prevent duplicates if server echoes back)
+          if (!currentImages.some(img => img.imageUrl === imageUrl && img.senderId === senderId)) {
+            return {
+              ...prev,
+              [rideId]: [...currentImages, { imageUrl, senderId, timestamp: new Date() }]
+            };
+          }
+          return prev;
+        });
+        if (senderId !== userId) { // Only show toast if it's from the other party
+          toast.info(`New image received for your ride!`);
+        }
+      }
+    });
+
 
     return () => {
       socket.disconnect();
@@ -204,7 +241,7 @@ const RideRequest = () => {
         clearInterval(locationIntervalRef.current);
       }
     };
-  }, [userId, token]);
+  }, [userId, token, currentRideId, pickupCoords]); // Added currentRideId to dependencies for socket events
 
   // Get current location for pickup
   useEffect(() => {
@@ -245,7 +282,7 @@ const RideRequest = () => {
     if (!pickupCoords || !selectedDropoffCoords || !selectedVehicle) return;
 
     setIsCalculatingFare(true);
-    
+
     const distance = calculateDistance(
       pickupCoords[0],
       pickupCoords[1],
@@ -262,30 +299,17 @@ const RideRequest = () => {
     setIsCalculatingFare(false);
   };
 
-  // Start tracking driver location
-  const startTrackingDriver = (driverId) => {
-    // Share rider location with driver periodically
-    locationIntervalRef.current = setInterval(() => {
-      if (pickupCoords && socketRef.current) {
-        socketRef.current.emit('shareRiderLocation', {
-          driverId,
-          location: { lat: pickupCoords[0], lng: pickupCoords[1] }
-        });
-      }
-    }, 5000);
-  };
-
   // Update ETA based on driver location
-  const updateEta = (driverLocation) => {
-    if (!pickupCoords || !driverLocation) return;
-    
+  const updateEta = (driverLoc) => {
+    if (!pickupCoords || !driverLoc) return;
+
     const distance = calculateDistance(
-      driverLocation.lat,
-      driverLocation.lng,
+      driverLoc[0], // driverLoc is already an array [lat, lng]
+      driverLoc[1],
       pickupCoords[0],
       pickupCoords[1]
     );
-    
+
     // Assuming average speed of 30 km/h in city traffic
     const minutes = Math.round((distance / 30) * 60);
     setEta(minutes < 1 ? "Less than a minute" : `${minutes} minutes`);
@@ -361,7 +385,6 @@ const RideRequest = () => {
 
       setCurrentRideId(response.data.data.rideId);
       setRideStatus("requested");
-      // Show OTP from API response immediately
       if (response.data.data.otp) {
         setRideOtp(response.data.data.otp);
         toast.info(`Your ride OTP: ${response.data.data.otp}`);
@@ -375,7 +398,8 @@ const RideRequest = () => {
           pickup_location,
           dropoff_location,
           fare,
-          vehicleType: vehicleOptions.find(v => v.id === selectedVehicle)?.name || "Standard Car"
+          vehicleType: vehicleOptions.find(v => v.id === selectedVehicle)?.name || "Standard Car",
+          otp: response.data.data.otp // Include OTP for new ride requests
         });
       }
     } catch (error) {
@@ -397,14 +421,15 @@ const RideRequest = () => {
           'Authorization': `Bearer ${token}`
         }
       });
-      setRideStatus("not_requested");
-      setCurrentRideId(null);
-      setDriverLocation(null);
-      setDriverDetails(null);
-      if (locationIntervalRef.current) {
-        clearInterval(locationIntervalRef.current);
-      }
       toast.success("Ride cancelled successfully");
+      // Emit socket event to notify driver about cancellation
+      if (socketRef.current && driverDetails?.driverId) {
+        socketRef.current.emit('riderCancelledRide', {
+          rideId: currentRideId,
+          driverId: driverDetails.driverId
+        });
+      }
+      resetRide();
     } catch (error) {
       toast.error("Failed to cancel ride");
       console.error(error);
@@ -421,14 +446,77 @@ const RideRequest = () => {
     setSelectedDropoffCoords(null);
     setSelectedVehicle(null);
     setFare(0);
-    setRideOtp(null); // Reset OTP only when ride is reset
+    setRideOtp(null);
+    setOtpVerified(false);
+    setDriverReached(false); // Reset driver reached status
+    setReceivedImages({}); // Clear received images on reset
+    setSelectedImageFile(null); // Clear selected image file
     if (locationIntervalRef.current) {
       clearInterval(locationIntervalRef.current);
+      locationIntervalRef.current = null;
     }
   };
 
+  // NEW: Handle file selection from input
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast.error("Please select an image file.");
+        event.target.value = ''; // Clear file input
+        setSelectedImageFile(null);
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) { // 5 MB limit
+        toast.error("Image size must be less than 5MB.");
+        event.target.value = ''; // Clear file input
+        setSelectedImageFile(null);
+        return;
+      }
+      setSelectedImageFile(file);
+    } else {
+      setSelectedImageFile(null);
+    }
+  };
+
+  // NEW: Handle image upload on explicit send
+  const sendImage = async (rideId, recipientDriverId) => {
+    if (!selectedImageFile) {
+      toast.error("No image selected to send.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('image', selectedImageFile);
+    formData.append('rideId', rideId);
+    formData.append('recipientId', recipientDriverId); // The driver's ID
+
+    try {
+      toast.info("Sending image...");
+      const response = await axios.post('/api/user/send-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.data.success) {
+        toast.success("Image sent successfully!");
+        // The server will emit the socket event to the recipient AND to the sender for display
+        setSelectedImageFile(null); // Clear selected file after sending
+      } else {
+        toast.error(response.data.message || "Failed to send image.");
+      }
+    } catch (error) {
+      console.error("Error sending image:", error);
+      toast.error(error.response?.data?.message || "Error sending image.");
+    }
+  };
+
+
   return (
     <div className="ride-request-container">
+      <ToastContainer position="top-right" autoClose={3000} /> {/* Added ToastContainer here */}
       <div className="ride-request-form">
         <h2>Request a Ride</h2>
         {rideStatus === "not_requested" ? (
@@ -479,9 +567,9 @@ const RideRequest = () => {
                     className={`vehicle-option ${selectedVehicle === vehicle.id ? "selected" : ""}`}
                     onClick={() => setSelectedVehicle(vehicle.id)}
                   >
-                    <img 
-                      src={vehicle.icon} 
-                      alt={vehicle.name} 
+                    <img
+                      src={vehicle.icon}
+                      alt={vehicle.name}
                       className="vehicle-icon"
                       loading="eager" // Prevent lazy loading
                     />
@@ -514,14 +602,14 @@ const RideRequest = () => {
               Cancel Ride
             </button>
           </div>
-        ) : rideStatus === "accepted" ? (
+        ) : rideStatus === "accepted" || rideStatus === "ongoing" ? ( // Show accepted/ongoing ride details
           <div className="ride-status">
-            <h3>Driver is on the way!</h3>
+            <h3>{rideStatus === "accepted" ? "Driver is on the way!" : "Your ride is ongoing!"}</h3>
             {eta && <p className="eta">ETA: {eta}</p>}
             {driverDetails && (
               <div className="driver-info">
-                <img 
-                  src={driverDetails.driverProfilePhoto || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} 
+                <img
+                  src={driverDetails.driverProfilePhoto || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"}
                   alt="Driver"
                   loading="eager"
                   className="driver-profile-photo"
@@ -532,7 +620,10 @@ const RideRequest = () => {
                 </div>
               </div>
             )}
-            {rideOtp ? (
+            {driverReached && rideStatus === "accepted" && ( // Only show "arrived" message if still accepted
+              <p style={{ color: 'green', fontWeight: 'bold', marginTop: '10px' }}>Your driver has arrived!</p>
+            )}
+            {rideOtp && (
               <div className="otp-section" style={{ margin: '16px 0' }}>
                 <label>Your Ride OTP:</label>
                 <input
@@ -554,9 +645,43 @@ const RideRequest = () => {
                   }}
                 />
               </div>
-            ) : (
-              <div style={{color: 'red'}}>No OTP found for this ride.</div>
             )}
+
+            {/* NEW: Image Sharing Section (only if accepted or ongoing) */}
+            {currentRideId && driverDetails?.driverId && (rideStatus === 'accepted' || rideStatus === 'ongoing') ? (
+                <div className="image-sharing-section" style={{ marginTop: '15px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                    <h4>Share Image with Driver:</h4>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange} // Handle file change
+                        style={{ display: 'block', marginBottom: '10px' }}
+                    />
+                     {selectedImageFile && (
+                        <button
+                          onClick={() => sendImage(currentRideId, driverDetails.driverId)} // Send image
+                          style={{ marginBottom: '10px', padding: '8px 15px', cursor: 'pointer' }}
+                        >
+                          Send Image
+                        </button>
+                      )}
+                     {/* Display received images */}
+                     {receivedImages[currentRideId]?.length > 0 && (
+                        <div className="received-images-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
+                          <h5>Conversation Images:</h5>
+                          {receivedImages[currentRideId].map((img, idx) => (
+                            <div key={idx} style={{ border: '1px solid #ddd', padding: '5px', borderRadius: '5px', maxWidth: '120px' }}>
+                                <img src={img.imageUrl} alt={`Sent/Received ${idx}`} style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '3px' }} />
+                                <small style={{display: 'block', textAlign: 'center', fontSize: '0.75em'}}>
+                                  From {img.senderId === userId ? 'You' : 'Driver'} @ {new Date(img.timestamp).toLocaleTimeString()}
+                                </small>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                </div>
+            ) : null}
+
             <button onClick={cancelRide} className="cancel-button">
               Cancel Ride
             </button>
@@ -565,8 +690,8 @@ const RideRequest = () => {
           <div className="ride-status">
             <h3>Ride Completed!</h3>
             <p>Thank you for using our service.</p>
-            <button 
-              onClick={resetRide} 
+            <button
+              onClick={resetRide}
               className="request-button"
               style={{ marginTop: '20px' }}
             >
@@ -590,30 +715,56 @@ const RideRequest = () => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          <SetMapView coords={pickupCoords} zoom={15} />
+          {rideStatus === "not_requested" && pickupCoords && (
+            <SetMapView coords={pickupCoords} zoom={15} />
+          )}
+          {rideStatus === "requested" && pickupCoords && (
+            <SetMapView coords={pickupCoords} zoom={15} />
+          )}
+          {rideStatus === "accepted" && driverLocation && (
+            <SetMapView coords={driverLocation} zoom={15} />
+          )}
+          {rideStatus === "ongoing" && driverLocation && ( // Center map on driver location during ongoing
+            <SetMapView coords={driverLocation} zoom={15} />
+          )}
+          {rideStatus === "completed" && pickupCoords && (
+            <SetMapView coords={pickupCoords} zoom={13} />
+          )}
 
+          {/* Pickup Marker */}
           {pickupCoords && (
             <Marker position={pickupCoords} icon={pickupIcon}>
               <Popup>Pickup Location</Popup>
             </Marker>
           )}
 
+          {/* Dropoff Marker */}
           {selectedDropoffCoords && (
             <Marker position={selectedDropoffCoords} icon={dropoffIcon}>
               <Popup>Dropoff Location</Popup>
             </Marker>
           )}
-          {/* Show line between pickup and dropoff as soon as both are set */}
-          {pickupCoords && selectedDropoffCoords && (
+
+          {/* Initial route line when selecting dropoff */}
+          {rideStatus === "not_requested" && pickupCoords && selectedDropoffCoords && (
             <Polyline positions={[pickupCoords, selectedDropoffCoords]} color="purple" />
           )}
-          {driverLocation && (
+
+          {/* Driver Location Marker - Visible when ride is accepted/ongoing */}
+          {driverLocation && (rideStatus === "accepted" || rideStatus === "ongoing") && (
             <Marker position={driverLocation} icon={driverIcon}>
               <Popup>Driver Location</Popup>
             </Marker>
           )}
-          {showRoute && pickupCoords && selectedDropoffCoords && (
-            <Polyline positions={[pickupCoords, selectedDropoffCoords]} color="green" />
+
+          {/* Driver Approaching Rider Line - Visible when ride is accepted */}
+          {rideStatus === "accepted" && driverLocation && pickupCoords && (
+            <Polyline positions={[driverLocation, pickupCoords]} color="blue" weight={5} />
+          )}
+
+          {/* Full Ride Route Line - Visible when OTP is verified (ride ongoing) */}
+          {otpVerified && pickupCoords && selectedDropoffCoords && (rideStatus === "ongoing" || rideStatus === "completed") && (
+            <Polyline positions={[pickupCoords, selectedDropoffCoords]} color="green" weight={5} />
           )}
         </MapContainer>
       </div>

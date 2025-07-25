@@ -300,3 +300,43 @@
   font-size: 18px;
   margin: 0;
 }
+/* In your CSS files */
+.image-sharing-section {
+    background-color: #f9f9f9;
+    border: 1px dashed #ccc;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.image-sharing-section h4 {
+    margin-top: 0;
+    color: #333;
+}
+
+.image-sharing-section input[type="file"] {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: calc(100% - 16px);
+    box-sizing: border-box;
+}
+
+.received-images-container {
+    margin-top: 15px;
+    padding: 10px;
+    border-top: 1px solid #eee;
+    text-align: left;
+}
+
+.received-images-container h5 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #555;
+}
+
+.received-images-container img {
+    display: block;
+    margin-bottom: 5px;
+}

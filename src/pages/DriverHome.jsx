@@ -28,9 +28,14 @@ const DriverHome = () => {
 
   // Add OTP state for each accepted ride
   const [otpInputs, setOtpInputs] = useState({});
-  const [otpStatus, setOtpStatus] = useState({});
   // Add state to track if driver has reached the rider for each ride
   const [reachedRider, setReachedRider] = useState({});
+  // State to track if OTP is verified for a specific ride (to enable Complete Ride)
+  const [isOtpVerifiedForRide, setIsOtpVerifiedForRide] = useState({});
+
+  // New state for image sharing
+  const [receivedImages, setReceivedImages] = useState({}); // Stores images received for each rideId
+  const [selectedImageFile, setSelectedImageFile] = useState({}); // Stores the file selected by input
 
   const handleProfileClick = () => {
     navigate("/profile");
@@ -54,24 +59,6 @@ const DriverHome = () => {
     return R * c;
   }, []);
 
-  const formatDateTime = (timestamp) => {
-    try {
-      if (!timestamp) throw new Error('No timestamp');
-      
-      const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
-      if (isNaN(date.getTime())) throw new Error('Invalid date');
-      
-      return date.toLocaleTimeString('en-IN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      });
-    } catch (error) {
-      console.error('Date formatting error:', error);
-      return "Time not available";
-    }
-  };
-
   const updateDriverLocation = useCallback(async () => {
     if (!navigator.geolocation) {
       toast.error("Geolocation not supported");
@@ -94,11 +81,32 @@ const DriverHome = () => {
             'Authorization': `Bearer ${tokenRef.current}`
           }
         });
-        
+
         if (socketRef.current?.connected) {
           socketRef.current.emit('updateDriverLocation', {
             driverId: userIdRef.current,
             location: newLocation
+          });
+
+          // Check for accepted rides to notify riders if driver is close
+          acceptedRides.forEach(ride => {
+            const riderPickupLat = ride.pickup_location.lat;
+            const riderPickupLng = ride.pickup_location.lng;
+            const distanceToRider = calculateDistance(
+              latitude,
+              longitude,
+              riderPickupLat,
+              riderPickupLng
+            );
+
+            // If driver is within 100 meters of pickup location and hasn't notified yet
+            if (distanceToRider * 1000 <= 100 && !reachedRider[ride._id]) { // Use ride._id
+              socketRef.current.emit('driverReachedRider', {
+                riderId: ride.userId,
+                rideId: ride._id // Use ride._id
+              });
+              setReachedRider(prev => ({ ...prev, [ride._id]: true }));
+            }
           });
         }
       } catch (error) {
@@ -123,7 +131,7 @@ const DriverHome = () => {
       handleError,
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, [currentLocation, navigate]);
+  }, [currentLocation, navigate, acceptedRides, reachedRider, calculateDistance]); // Added dependencies
 
   const setupSocket = useCallback(() => {
     if (socketRef.current?.connected) return;
@@ -149,7 +157,7 @@ const DriverHome = () => {
       console.log('Connected to WebSocket');
       setSocketStatus('connected');
       reconnectAttemptsRef.current = 0;
-      
+
       if (isOnline && userIdRef.current) {
         newSocket.emit('driverOnline', userIdRef.current);
       }
@@ -159,7 +167,7 @@ const DriverHome = () => {
       if (!isMountedRef.current) return;
       console.log('Disconnected:', reason);
       setSocketStatus('disconnected');
-      
+
       if (reason === 'io server disconnect') {
         setTimeout(() => newSocket.connect(), 1000);
       }
@@ -170,7 +178,7 @@ const DriverHome = () => {
       console.error('Connection error:', error);
       setSocketStatus('error');
       reconnectAttemptsRef.current += 1;
-      
+
       if (reconnectAttemptsRef.current <= 5) {
         setTimeout(() => newSocket.connect(), Math.min(5000, reconnectAttemptsRef.current * 1000));
       }
@@ -184,10 +192,9 @@ const DriverHome = () => {
 
     newSocket.on('newRideAvailable', (newRideData) => {
       console.log('Received newRideAvailable event:', newRideData);
-      // Always show toast for debugging
-      toast.info('New ride requested! (debug)');
+      toast.info('New ride requested!');
       if (!isMountedRef.current || !isOnline || !currentLocation) return;
-      
+
       const distance = calculateDistance(
         currentLocation.lat,
         currentLocation.lng,
@@ -197,7 +204,7 @@ const DriverHome = () => {
 
       if (distance <= 5) {
         setPendingRides(prev => {
-          const exists = prev.some(r => 
+          const exists = prev.some(r =>
             r.userId === newRideData.userId && r.rideIndex === newRideData.rideIndex
           );
           if (exists) return prev;
@@ -218,32 +225,57 @@ const DriverHome = () => {
 
     newSocket.on('rideAcceptedByOther', ({ rideId }) => {
       if (!isMountedRef.current) return;
-      setPendingRides(prev => 
+      setPendingRides(prev =>
         prev.filter(r => r._id !== rideId)
       );
       toast.info("Ride accepted by another driver");
     });
 
-    newSocket.on('riderLocationUpdate', (location) => {
+    // Handle OTP verification response from server
+    newSocket.on('otpVerificationResponse', ({ rideId, success, message }) => {
       if (!isMountedRef.current) return;
-      console.log('Rider location update:', location);
+      if (success) {
+        toast.success(message || 'OTP verified! You can start the ride.');
+        setIsOtpVerifiedForRide(prev => ({ ...prev, [rideId]: true }));
+        // Optionally update ride status to ongoing immediately here if backend doesn't handle it
+        setAcceptedRides(prev => prev.map(ride =>
+          ride._id === rideId ? { ...ride, status: 'ongoing' } : ride
+        ));
+      } else {
+        toast.error(message || 'Wrong OTP! Please try again.');
+        setIsOtpVerifiedForRide(prev => ({ ...prev, [rideId]: false }));
+      }
     });
 
     newSocket.on('rideCancelled', ({ rideId }) => {
       if (!isMountedRef.current) return;
-      setAcceptedRides(prev => 
+      setAcceptedRides(prev =>
         prev.filter(r => r._id !== rideId)
       );
       toast.info("Ride was cancelled by the rider");
     });
 
-    newSocket.on('otpVerified', ({ success }) => {
-      if (success) {
-        toast.success('OTP verified! You can start the ride.');
-      } else {
-        toast.error('Wrong OTP!');
+    // NEW: Listen for incoming image messages
+    newSocket.on('imageMessage', ({ rideId, imageUrl, senderId, senderRole }) => {
+      if (!isMountedRef.current) return;
+      console.log(`Received image for ride ${rideId} from ${senderRole}: ${imageUrl}`);
+      setReceivedImages(prev => {
+        const currentImages = prev[rideId] || [];
+        // Only add if not already present (to prevent duplicates if server echoes back)
+        if (!currentImages.some(img => img.imageUrl === imageUrl && img.senderId === senderId)) {
+          return {
+            ...prev,
+            [rideId]: [...currentImages, { imageUrl, senderId, timestamp: new Date() }]
+          };
+        }
+        return prev;
+      });
+
+      if (senderId !== userIdRef.current) { // Only show toast if it's from the other party
+        toast.info(`New image received for ride ${rideId}`);
       }
     });
+
 
     socketRef.current = newSocket;
 
@@ -271,7 +303,7 @@ const DriverHome = () => {
     } catch (error) {
       if (!isMountedRef.current || isCancel(error)) throw error;
       if (retries <= 0 || error.response?.status === 401) throw error;
-      
+
       await new Promise(res => setTimeout(res, 1000 * (4 - retries)));
       return fetchWithRetry(url, options, retries - 1);
     }
@@ -286,7 +318,7 @@ const DriverHome = () => {
 
         const { isOnline: initialIsOnline, current_location } = response.data;
         setIsOnline(initialIsOnline);
-        
+
         if (current_location) setCurrentLocation(current_location);
 
         if (initialIsOnline) {
@@ -334,7 +366,7 @@ const DriverHome = () => {
       );
 
       if (!isMountedRef.current) return;
-      
+
       setIsOnline(newStatus);
       toast.success(response.data.message);
 
@@ -350,6 +382,12 @@ const DriverHome = () => {
         setLocationIntervalId(null);
         setPendingRides([]);
         setAcceptedRides([]);
+        // Reset OTP states when going offline
+        setOtpInputs({});
+        setReachedRider({});
+        setIsOtpVerifiedForRide({});
+        setReceivedImages({}); // Clear received images
+        setSelectedImageFile({}); // Clear selected image file
         if (socketRef.current?.connected) {
           socketRef.current.emit('driverOffline', userIdRef.current);
         }
@@ -372,7 +410,7 @@ const DriverHome = () => {
       if (!isMountedRef.current) return;
 
       const filteredRides = response.data.data
-        .filter(ride => !acceptedRides.some(r => 
+        .filter(ride => !acceptedRides.some(r =>
           r.userId === ride.userId && r.rideIndex === ride.rideIndex
         ))
         .map(ride => ({
@@ -382,7 +420,7 @@ const DriverHome = () => {
             ride.request_time || ride.createdAt || ride.timestamp || ride.requested_at || null
           )
         }));
-      
+
       setPendingRides(filteredRides);
     } catch (error) {
       if (!isCancel(error) && isMountedRef.current) {
@@ -406,9 +444,9 @@ const DriverHome = () => {
       if (!isMountedRef.current) return;
 
       setAcceptedRides(response.data.data.map(ride => {
-        const acceptedTime = ride.accepted_at || ride.acceptedAt || 
-                           ride.updatedAt || ride.modified_at || null;
-        
+        const acceptedTime = ride.accepted_at || ride.acceptedAt ||
+          ride.updatedAt || ride.modified_at || null;
+
         return {
           ...ride,
           uniqueKey: generateUniqueKey(ride.userId, ride.rideIndex),
@@ -460,34 +498,19 @@ const DriverHome = () => {
 
       toast.success(response.data.message);
 
-      // Start sharing location with rider
-      const shareLocation = () => {
-        if (currentLocation && socketRef.current?.connected) {
-          socketRef.current.emit('shareDriverLocation', {
-            userId,
-            location: { lat: currentLocation.lat, lng: currentLocation.lng }
-          });
-        }
-      };
-
-      // Share immediately and then every 5 seconds
-      shareLocation();
-      const locationInterval = setInterval(shareLocation, 5000);
-
       setPendingRides(prev => {
-        const acceptedRide = prev.find(r => 
+        const acceptedRide = prev.find(r =>
           r.userId === userId && r.rideIndex === rideIndex
         );
-        
+
         if (acceptedRide) {
           const acceptedTime = new Date().toISOString();
-          setAcceptedRides(prevAccepted => [{ 
-            ...acceptedRide, 
-            status: "accepted", 
+          setAcceptedRides(prevAccepted => [{
+            ...acceptedRide,
+            status: "accepted",
             accepted_at: acceptedTime,
             uniqueKey: generateUniqueKey(userId, rideIndex),
             formattedAcceptedTime: formatDateTime(acceptedTime),
-            locationInterval // Store interval to clear later
           }, ...prevAccepted]);
           return prev.filter(r => !(r.userId === userId && r.rideIndex === rideIndex));
         }
@@ -497,9 +520,12 @@ const DriverHome = () => {
       // Emit driverAcceptsRide via socket
       if (socketRef.current?.connected) {
         socketRef.current.emit('driverAcceptsRide', {
-          rideId: rideIndex, // or use the correct rideId if available
+          rideId: response.data.data.rideMongoId, // Use the actual ride _id from backend
           driverId: userIdRef.current,
-          userId: userId
+          userId: userId,
+          driverName: response.data.data.driverName,
+          vehicleType: response.data.data.vehicleType,
+          driverProfilePhoto: response.data.data.driverProfilePhoto // pass driver photo
         });
       }
 
@@ -508,14 +534,16 @@ const DriverHome = () => {
       if (error.response?.status === 401) {
         navigate('/login');
       } else {
-        toast.error("Failed to accept ride");
-        fetchPendingRides();
+        toast.error(error.response?.data?.message || "Failed to accept ride");
+        fetchPendingRides(); // Re-fetch to update status
       }
     }
   };
 
   const handleRejectRide = async (userId, rideIndex) => {
     try {
+      // In a real app, you might want to send the ride ID not just userId, rideIndex
+      // For now, this just removes it from the driver's pending list.
       await axios.post(
         "/api/user/driver/reject-ride",
         { userId, rideIndex },
@@ -523,7 +551,7 @@ const DriverHome = () => {
       );
 
       toast.success("Ride rejected");
-      setPendingRides(prev => 
+      setPendingRides(prev =>
         prev.filter(r => !(r.userId === userId && r.rideIndex === rideIndex))
       );
     } catch (error) {
@@ -536,8 +564,30 @@ const DriverHome = () => {
     }
   };
 
-  const handleCompleteRide = async (customerId, rideIndex) => {
+const handleVerifyOtp = async (rideId, enteredOtp) => {
+  try {
+    const response = await axios.post(
+      "/api/user/ride/verify-otp",
+      { rideId, enteredOtp },
+      { headers: { 'Authorization': `Bearer ${tokenRef.current}` } }
+    );
+    // The socket event 'otpVerificationResponse' from the backend will handle toast and state update
+  } catch (error) {
+    console.error("Error verifying OTP (frontend Axios catch):", error); // More specific log
+    console.error("Error response data:", error.response?.data); // Log response data
+    console.error("Error status:", error.response?.status); // Log status
+    toast.error(error.response?.data?.message || "Failed to verify OTP. Server error."); // Show server message
+  }
+};
+
+
+  const handleCompleteRide = async (customerId, rideIndex, rideMongoId) => {
     try {
+      if (!isOtpVerifiedForRide[rideMongoId]) {
+        toast.error('OTP must be verified before completing the ride.');
+        return;
+      }
+
       const response = await axios.put(
         "/api/user/ride/complete",
         { customerId, rideIndex },
@@ -545,18 +595,37 @@ const DriverHome = () => {
       );
 
       toast.success(response.data.message);
-      
-      // Clear location sharing interval
-      const completedRide = acceptedRides.find(r => 
-        r.userId === customerId && r.rideIndex === rideIndex
-      );
-      if (completedRide?.locationInterval) {
-        clearInterval(completedRide.locationInterval);
-      }
 
-      setAcceptedRides(prev => 
+      setAcceptedRides(prev =>
         prev.filter(r => !(r.userId === customerId && r.rideIndex === rideIndex))
       );
+      // Clean up OTP and reached rider status for the completed ride
+      setOtpInputs(prev => {
+        const newState = { ...prev };
+        delete newState[rideMongoId];
+        return newState;
+      });
+      setReachedRider(prev => {
+        const newState = { ...prev };
+        delete newState[rideMongoId];
+        return newState;
+      });
+      setIsOtpVerifiedForRide(prev => {
+        const newState = { ...prev };
+        delete newState[rideMongoId];
+        return newState;
+      });
+      setReceivedImages(prev => { // Clear images for completed ride
+        const newState = { ...prev };
+        delete newState[rideMongoId];
+        return newState;
+      });
+      setSelectedImageFile(prev => { // Clear selected image file
+        const newState = { ...prev };
+        delete newState[rideMongoId];
+        return newState;
+      });
+
     } catch (error) {
       console.error("Complete ride error:", error);
       if (error.response?.status === 401) {
@@ -565,6 +634,75 @@ const DriverHome = () => {
         toast.error("Failed to complete ride");
         fetchAcceptedRides();
       }
+    }
+  };
+
+  // Helper function to format time
+  const formatDateTime = (timestamp) => {
+    try {
+      if (!timestamp) return "Time not available";
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      return "Time not available";
+    }
+  };
+
+  // NEW: Handle file selection from input
+  const handleFileChange = (event, rideId) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast.error("Please select an image file.");
+        event.target.value = ''; // Clear file input
+        setSelectedImageFile(prev => ({ ...prev, [rideId]: null }));
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) { // 5 MB limit
+        toast.error("Image size must be less than 5MB.");
+        event.target.value = ''; // Clear file input
+        setSelectedImageFile(prev => ({ ...prev, [rideId]: null }));
+        return;
+      }
+      setSelectedImageFile(prev => ({ ...prev, [rideId]: file }));
+    } else {
+      setSelectedImageFile(prev => ({ ...prev, [rideId]: null }));
+    }
+  };
+
+  // NEW: Handle image upload on explicit send
+  const sendImage = async (rideId, recipientUserId) => {
+    const fileToSend = selectedImageFile[rideId];
+    if (!fileToSend) {
+      toast.error("No image selected to send.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('image', fileToSend);
+    formData.append('rideId', rideId);
+    formData.append('recipientId', recipientUserId); // The rider's ID
+
+    try {
+      toast.info("Sending image...");
+      const response = await axios.post('/api/user/send-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${tokenRef.current}`
+        }
+      });
+
+      if (response.data.success) {
+        toast.success("Image sent successfully!");
+        // The server will emit the socket event to the recipient AND to the sender for display
+        setSelectedImageFile(prev => ({ ...prev, [rideId]: null })); // Clear selected file after sending
+      } else {
+        toast.error(response.data.message || "Failed to send image.");
+      }
+    } catch (error) {
+      console.error("Error sending image:", error);
+      toast.error(error.response?.data?.message || "Error sending image.");
     }
   };
 
@@ -678,7 +816,7 @@ const DriverHome = () => {
                       <span className="material-symbols-outlined">my_location</span>
                       Ride from {ride.pickup_location.address}
                     </h3>
-                    
+
                     <div className="ride-details">
                       <div className="location-details">
                         <div className="location-row">
@@ -689,7 +827,7 @@ const DriverHome = () => {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="ride-meta">
                         <div className="meta-item">
                           <span className="detail-label">Requested:</span>
@@ -698,19 +836,19 @@ const DriverHome = () => {
                             {ride.formattedRequestTime}
                           </span>
                         </div>
-                        
+
                         <div className="meta-item">
                           <span className="detail-label">Distance:</span>
                           <span className="meta-value">{ride.distance}</span>
                         </div>
-                        
+
                         <div className="meta-item">
                           <span className="detail-label">Fare:</span>
                           <span className="fare-display">${ride.fare?.toFixed(2) || '0.00'}</span>
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="action-buttons">
                       <button
                         className="action-btn accept-btn"
@@ -746,7 +884,7 @@ const DriverHome = () => {
                     <span className="material-symbols-outlined">my_location</span>
                     Ride to {ride.dropoff_location.address}
                   </h3>
-                  
+
                   <div className="ride-details">
                     <div className="location-details">
                       <div className="location-row">
@@ -757,7 +895,7 @@ const DriverHome = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="ride-meta">
                       <div className="meta-item">
                         <span className="detail-label">Requested:</span>
@@ -766,7 +904,7 @@ const DriverHome = () => {
                           {ride.formattedRequestTime}
                         </span>
                       </div>
-                      
+
                       <div className="meta-item">
                         <span className="detail-label">Accepted:</span>
                         <span className="time-display">
@@ -774,59 +912,96 @@ const DriverHome = () => {
                           {ride.formattedAcceptedTime}
                         </span>
                       </div>
-                      
+
                       <div className="meta-item">
                         <span className="detail-label">Status:</span>
                         <span className="meta-value">{ride.status || 'accepted'}</span>
                       </div>
-                      
+
                       <div className="meta-item">
                         <span className="detail-label">Fare:</span>
                         <span className="fare-display">${ride.fare?.toFixed(2) || '0.00'}</span>
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Reached Rider button and OTP input for this ride */}
                   <div className="otp-section">
                     <button
-                      onClick={() => setReachedRider(state => ({ ...state, [ride.rideId]: true }))}
-                      disabled={reachedRider[ride.rideId]}
-                      style={{marginBottom: '8px', marginRight: '10px'}}
+                      onClick={() => setReachedRider(state => ({ ...state, [ride._id]: true }))} // Use ride._id
+                      disabled={reachedRider[ride._id]}
+                      style={{ marginBottom: '8px', marginRight: '10px' }}
                     >
-                      {reachedRider[ride.rideId] ? 'Reached' : 'Reached Rider'}
+                      {reachedRider[ride._id] ? 'Reached' : 'Reached Rider'}
                     </button>
                     <label>Enter OTP from Rider:</label>
                     <input
                       type="text"
-                      value={otpInputs[ride.rideId] || ''}
-                      onChange={e => setOtpInputs(inputs => ({ ...inputs, [ride.rideId]: e.target.value }))}
+                      value={otpInputs[ride._id] || ''} // Use ride._id
+                      onChange={e => setOtpInputs(inputs => ({ ...inputs, [ride._id]: e.target.value }))}
                       maxLength={6}
-                      style={{marginRight: '10px'}}
-                      disabled={!reachedRider[ride.rideId]}
+                      style={{ marginRight: '10px' }}
+                      disabled={!reachedRider[ride._id] || isOtpVerifiedForRide[ride._id]}
                     />
                     <button
                       onClick={() => {
-                        const otp = otpInputs[ride.rideId];
-                        if (!reachedRider[ride.rideId]) {
-                          toast.error('You must reach the rider before entering OTP');
+                        const otp = otpInputs[ride._id];
+                        if (!reachedRider[ride._id]) {
+                          toast.error('You must confirm reaching the rider before entering OTP');
                           return;
                         }
                         if (otp && otp.length === 6) {
-                          if (socketRef.current?.connected) {
-                            socketRef.current.emit('verifyOtp', { rideId: ride.rideId, enteredOtp: otp });
-                          }
+                          handleVerifyOtp(ride._id, otp); // Pass ride._id
                         } else {
                           toast.error('Please enter a valid 6-digit OTP');
                         }
                       }}
-                      disabled={!reachedRider[ride.rideId]}
+                      disabled={!reachedRider[ride._id] || isOtpVerifiedForRide[ride._id]}
                     >Verify OTP</button>
+                    {isOtpVerifiedForRide[ride._id] && <span style={{ color: 'green', marginLeft: '10px' }}>OTP Verified!</span>}
                   </div>
+
+                  {/* NEW: Image Sharing Section (only if accepted or ongoing) */}
+                  {(ride.status === 'accepted' || ride.status === 'ongoing') ? (
+                    <div className="image-sharing-section" style={{ marginTop: '15px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                      <h4>Share Image with Rider:</h4>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleFileChange(e, ride._id)} // Handle file change
+                        style={{ display: 'block', marginBottom: '10px' }}
+                      />
+                      {selectedImageFile[ride._id] && (
+                        <button
+                          onClick={() => sendImage(ride._id, ride.userId)} // Send image
+                          style={{ marginBottom: '10px', padding: '8px 15px', cursor: 'pointer' }}
+                        >
+                          Send Image
+                        </button>
+                      )}
+                      {/* Display received images */}
+                      {receivedImages[ride._id]?.length > 0 && (
+                        <div className="received-images-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
+                          <h5>Conversation Images:</h5>
+                          {receivedImages[ride._id].map((img, idx) => (
+                            <div key={idx} style={{ border: '1px solid #ddd', padding: '5px', borderRadius: '5px', maxWidth: '120px' }}>
+                                <img src={img.imageUrl} alt={`Sent/Received ${idx}`} style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '3px' }} />
+                                <small style={{display: 'block', textAlign: 'center', fontSize: '0.75em'}}>
+                                  From {img.senderId === userIdRef.current ? 'You' : 'Rider'} @ {new Date(img.timestamp).toLocaleTimeString()}
+                                </small>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+
+
                   <div className="action-buttons">
                     <button
                       className="action-btn complete-btn"
-                      onClick={() => handleCompleteRide(ride.userId, ride.rideIndex)}
+                      onClick={() => handleCompleteRide(ride.userId, ride.rideIndex, ride._id)} // Pass ride._id
+                      disabled={!isOtpVerifiedForRide[ride._id]} // Disable until OTP is verified
                     >
                       <span className="material-symbols-outlined">done_all</span>
                       Complete Ride
